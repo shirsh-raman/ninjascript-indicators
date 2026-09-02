@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -36,6 +37,7 @@ PRIVATE_URL = re.compile(
     r"(?i)\b(?:https?|ftp)://(?:[^/\s:@]+:[^/\s@]+@|localhost|[^/]*\.local|10\.|127\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)"
 )
 MARKDOWN_LINK = re.compile(r"!?(?:\[[^]]*\])\(([^)\s]+)(?:\s+['\"][^)]*['\"])?\)")
+VCS_DIRECTORIES = {".git", ".hg", ".svn", ".bzr", "CVS"}
 
 
 def _read_text(path: Path) -> str:
@@ -128,7 +130,14 @@ def validate_bundle(package_dir: str | Path = ".") -> list[str]:
     if (package / "references/source-index.jsonl").is_file():
         _check_manifest(package / "references/source-index.jsonl", errors)
 
-    for path in sorted(p for p in package.rglob("*") if p.is_file()):
+    paths: list[Path] = []
+    for root, directories, filenames in os.walk(package):
+        directories[:] = [directory for directory in directories if directory not in VCS_DIRECTORIES]
+        paths.extend(
+            path for path in (Path(root) / filename for filename in filenames) if path.is_file()
+        )
+
+    for path in sorted(paths):
         relative = path.relative_to(package).as_posix()
         if path.name == ".env" or path.name.startswith(".env."):
             errors.append(f"forbidden file: {relative}")

@@ -44,6 +44,11 @@ class BundleTests(unittest.TestCase):
     def test_clean_package(self):
         self.assertEqual(validate_bundle(self.package), [])
 
+    def test_ignores_vcs_metadata(self):
+        (self.package / ".git/logs").mkdir(parents=True)
+        (self.package / ".git/logs/HEAD").write_text("owner@example.com\n", encoding="utf-8")
+        self.assertEqual(validate_bundle(self.package), [])
+
     def test_rejects_absolute_path(self):
         self.assertInvalid("/home/user/file", "/home/")
 
